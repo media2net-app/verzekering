@@ -2,54 +2,46 @@
 
 import { useState } from 'react';
 import { FormData } from '@/types';
-import { insuranceTypes, categories } from '@/data/insuranceTypes';
+import { insuranceTypes } from '@/data/insuranceTypes';
 import StepIndicator from './StepIndicator';
-import CategorySelection from './CategorySelection';
-import InsuranceSelection from './InsuranceSelection';
+import Basispakket, { BASISPAKKET_TO_INSURANCE } from './Basispakket';
 import QuestionForm from './QuestionForm';
 import PersonalInfoForm from './PersonalInfoForm';
 import Summary from './Summary';
 import styles from './InsuranceCalculator.module.css';
 
 const STEPS = [
-  { id: 'categories', title: 'Categorieën' },
-  { id: 'insurances', title: 'Verzekeringen' },
-  { id: 'questions', title: 'Details' },
+  { id: 'basispakket', title: 'Basispakket' },
   { id: 'personal', title: 'Persoonlijke gegevens' },
+  { id: 'questions', title: 'Details' },
   { id: 'summary', title: 'Overzicht' },
 ];
 
 export default function InsuranceCalculator() {
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedBasispakketOptions, setSelectedBasispakketOptions] = useState<string[]>([]);
   const [formData, setFormData] = useState<FormData>({
     selectedInsurances: [],
     answers: {},
     personalInfo: {},
   });
 
-  const handleCategorySelect = (categories: string[]) => {
-    setSelectedCategories(categories);
-    // Filter insurances based on selected categories
-    const relevantInsurances = insuranceTypes.filter(ins =>
-      categories.includes(ins.category)
-    );
+  const handleBasispakketToggle = (option: string) => {
+    const newSelected = selectedBasispakketOptions.includes(option)
+      ? selectedBasispakketOptions.filter(id => id !== option)
+      : [...selectedBasispakketOptions, option];
+    
+    setSelectedBasispakketOptions(newSelected);
+    
+    // Map basispakket options to insurance IDs
+    const insuranceIds = newSelected
+      .map(opt => BASISPAKKET_TO_INSURANCE[opt])
+      .filter(Boolean);
+    
     setFormData(prev => ({
       ...prev,
-      selectedInsurances: relevantInsurances.map(ins => ins.id),
+      selectedInsurances: insuranceIds,
     }));
-  };
-
-  const handleInsuranceToggle = (insuranceId: string) => {
-    setFormData(prev => {
-      const isSelected = prev.selectedInsurances.includes(insuranceId);
-      return {
-        ...prev,
-        selectedInsurances: isSelected
-          ? prev.selectedInsurances.filter(id => id !== insuranceId)
-          : [...prev.selectedInsurances, insuranceId],
-      };
-    });
   };
 
   const handleAnswerChange = (insuranceId: string, questionId: string, value: any) => {
@@ -65,11 +57,32 @@ export default function InsuranceCalculator() {
     }));
   };
 
-  const handlePersonalInfoChange = (field: string, value: string) => {
+  const handlePersonalInfoChange = (field: string, value: string | string[]) => {
     setFormData(prev => ({
       ...prev,
       personalInfo: {
         ...prev.personalInfo,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handlePolisUpload = (file: File, url: string, fileName: string) => {
+    setFormData(prev => ({
+      ...prev,
+      uploadedPolis: {
+        file,
+        url,
+        fileName,
+      },
+    }));
+  };
+
+  const handleAlgemeneVraagChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      algemeneVragen: {
+        ...prev.algemeneVragen,
         [field]: value,
       },
     }));
@@ -90,15 +103,125 @@ export default function InsuranceCalculator() {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return selectedCategories.length > 0;
+        return selectedBasispakketOptions.length > 0;
       case 1:
-        return formData.selectedInsurances.length > 0;
+        const hasPartner = formData.personalInfo.gezinssituatie === 'stel' || 
+                          formData.personalInfo.gezinssituatie === 'gezin';
+        const hasChildren = formData.personalInfo.gezinssituatie === 'gezin' || 
+                           formData.personalInfo.gezinssituatie === 'stel' || 
+                           formData.personalInfo.gezinssituatie === 'alleenstaand_met_kinderen';
+        const hasPartnerDate = !hasPartner || formData.personalInfo.geboortedatumPartner;
+        const hasChildrenDates = !hasChildren || 
+                                 (formData.personalInfo.kinderen && 
+                                  formData.personalInfo.kinderen.length > 0 &&
+                                  formData.personalInfo.kinderen.every(k => k && k !== ''));
+        
+        return (
+          formData.personalInfo.naam &&
+          formData.personalInfo.postcode &&
+          formData.personalInfo.huisnummer &&
+          formData.personalInfo.geboortedatum &&
+          formData.personalInfo.geslacht &&
+          formData.personalInfo.gezinssituatie &&
+          formData.personalInfo.email &&
+          formData.personalInfo.telefoonnummer &&
+          hasPartnerDate &&
+          hasChildrenDates
+        );
       case 2:
         // Check if all required questions are answered
         const selectedInsurances = insuranceTypes.filter(ins =>
           formData.selectedInsurances.includes(ins.id)
         );
         return selectedInsurances.every(insurance => {
+          if (insurance.id === 'woonverzekering') {
+            // For woonverzekering, only eigen_risico is required
+            return formData.answers[insurance.id]?.['eigen_risico'] !== undefined && 
+                   formData.answers[insurance.id]?.['eigen_risico'] !== '';
+          }
+          if (insurance.id === 'inboedelverzekering') {
+            // For inboedelverzekering, only eigen_risico is required
+            return formData.answers[insurance.id]?.['eigen_risico'] !== undefined && 
+                   formData.answers[insurance.id]?.['eigen_risico'] !== '';
+          }
+          if (insurance.id === 'aansprakelijkheidsverzekering') {
+            // For aansprakelijkheidsverzekering, verzekerd_bedrag and eigen_risico are required
+            return formData.answers[insurance.id]?.['verzekerd_bedrag'] !== undefined && 
+                   formData.answers[insurance.id]?.['verzekerd_bedrag'] !== '' &&
+                   formData.answers[insurance.id]?.['eigen_risico'] !== undefined && 
+                   formData.answers[insurance.id]?.['eigen_risico'] !== '';
+          }
+          if (insurance.id === 'rechtsbijstandverzekering') {
+            // For rechtsbijstandverzekering, hoedanigheid, dekkingen and eigen_risico are required
+            return formData.answers[insurance.id]?.['hoedanigheid'] !== undefined && 
+                   formData.answers[insurance.id]?.['hoedanigheid'] !== '' &&
+                   formData.answers[insurance.id]?.['dekkingen'] !== undefined && 
+                   formData.answers[insurance.id]?.['dekkingen'] !== '' &&
+                   formData.answers[insurance.id]?.['eigen_risico'] !== undefined && 
+                   formData.answers[insurance.id]?.['eigen_risico'] !== '';
+          }
+          if (insurance.id === 'reisverzekering') {
+            // For reisverzekering, dekkingsgebied, eigen_risico and annuleringsverzekering are required
+            return formData.answers[insurance.id]?.['dekkingsgebied'] !== undefined && 
+                   formData.answers[insurance.id]?.['dekkingsgebied'] !== '' &&
+                   formData.answers[insurance.id]?.['eigen_risico'] !== undefined && 
+                   formData.answers[insurance.id]?.['eigen_risico'] !== '' &&
+                   formData.answers[insurance.id]?.['annuleringsverzekering'] !== undefined && 
+                   formData.answers[insurance.id]?.['annuleringsverzekering'] !== '';
+          }
+          if (insurance.id === 'autoverzekering') {
+            // For autoverzekering, all fields are required
+            return formData.answers[insurance.id]?.['kenteken'] !== undefined && 
+                   formData.answers[insurance.id]?.['kenteken'] !== '' &&
+                   formData.answers[insurance.id]?.['meldcode'] !== undefined && 
+                   formData.answers[insurance.id]?.['meldcode'] !== '' &&
+                   formData.answers[insurance.id]?.['aanschafdatum'] !== undefined && 
+                   formData.answers[insurance.id]?.['aanschafdatum'] !== '' &&
+                   formData.answers[insurance.id]?.['dagwaarde'] !== undefined && 
+                   formData.answers[insurance.id]?.['dagwaarde'] !== '' &&
+                   formData.answers[insurance.id]?.['schadevrije_jaren'] !== undefined && 
+                   formData.answers[insurance.id]?.['schadevrije_jaren'] !== '' &&
+                   formData.answers[insurance.id]?.['km_stand'] !== undefined && 
+                   formData.answers[insurance.id]?.['km_stand'] !== '' &&
+                   formData.answers[insurance.id]?.['dekking'] !== undefined && 
+                   formData.answers[insurance.id]?.['dekking'] !== '' &&
+                   formData.answers[insurance.id]?.['eigen_risico'] !== undefined && 
+                   formData.answers[insurance.id]?.['eigen_risico'] !== '';
+          }
+          if (insurance.id === 'motorverzekering') {
+            // For motorverzekering, all fields are required (same as autoverzekering)
+            return formData.answers[insurance.id]?.['kenteken'] !== undefined && 
+                   formData.answers[insurance.id]?.['kenteken'] !== '' &&
+                   formData.answers[insurance.id]?.['meldcode'] !== undefined && 
+                   formData.answers[insurance.id]?.['meldcode'] !== '' &&
+                   formData.answers[insurance.id]?.['aanschafdatum'] !== undefined && 
+                   formData.answers[insurance.id]?.['aanschafdatum'] !== '' &&
+                   formData.answers[insurance.id]?.['dagwaarde'] !== undefined && 
+                   formData.answers[insurance.id]?.['dagwaarde'] !== '' &&
+                   formData.answers[insurance.id]?.['schadevrije_jaren'] !== undefined && 
+                   formData.answers[insurance.id]?.['schadevrije_jaren'] !== '' &&
+                   formData.answers[insurance.id]?.['km_stand'] !== undefined && 
+                   formData.answers[insurance.id]?.['km_stand'] !== '' &&
+                   formData.answers[insurance.id]?.['dekking'] !== undefined && 
+                   formData.answers[insurance.id]?.['dekking'] !== '' &&
+                   formData.answers[insurance.id]?.['eigen_risico'] !== undefined && 
+                   formData.answers[insurance.id]?.['eigen_risico'] !== '';
+          }
+          if (insurance.id === 'caravanverzekering') {
+            // For caravanverzekering, kenteken, bouwlengte, type, aanschafdatum, dagwaarde and dekking are required
+            return formData.answers[insurance.id]?.['kenteken'] !== undefined && 
+                   formData.answers[insurance.id]?.['kenteken'] !== '' &&
+                   formData.answers[insurance.id]?.['bouwlengte'] !== undefined && 
+                   formData.answers[insurance.id]?.['bouwlengte'] !== '' &&
+                   formData.answers[insurance.id]?.['type'] !== undefined && 
+                   formData.answers[insurance.id]?.['type'] !== '' &&
+                   formData.answers[insurance.id]?.['aanschafdatum'] !== undefined && 
+                   formData.answers[insurance.id]?.['aanschafdatum'] !== '' &&
+                   formData.answers[insurance.id]?.['dagwaarde'] !== undefined && 
+                   formData.answers[insurance.id]?.['dagwaarde'] !== '' &&
+                   formData.answers[insurance.id]?.['dekking'] !== undefined && 
+                   formData.answers[insurance.id]?.['dekking'] !== '';
+          }
           return insurance.questions
             .filter(q => q.required)
             .every(q => {
@@ -106,13 +229,6 @@ export default function InsuranceCalculator() {
               return answer !== undefined && answer !== '' && answer !== null;
             });
         });
-      case 3:
-        return (
-          formData.personalInfo.naam &&
-          formData.personalInfo.email &&
-          formData.personalInfo.postcode &&
-          formData.personalInfo.huisnummer
-        );
       default:
         return true;
     }
@@ -122,20 +238,16 @@ export default function InsuranceCalculator() {
     switch (currentStep) {
       case 0:
         return (
-          <CategorySelection
-            categories={categories}
-            selectedCategories={selectedCategories}
-            onSelect={handleCategorySelect}
+          <Basispakket
+            selectedOptions={selectedBasispakketOptions}
+            onToggle={handleBasispakketToggle}
           />
         );
       case 1:
         return (
-          <InsuranceSelection
-            insurances={insuranceTypes.filter(ins =>
-              selectedCategories.includes(ins.category)
-            )}
-            selectedInsurances={formData.selectedInsurances}
-            onToggle={handleInsuranceToggle}
+          <PersonalInfoForm
+            data={formData.personalInfo}
+            onChange={handlePersonalInfoChange}
           />
         );
       case 2:
@@ -146,16 +258,13 @@ export default function InsuranceCalculator() {
             )}
             answers={formData.answers}
             onChange={handleAnswerChange}
+            onPolisUpload={handlePolisUpload}
+            uploadedPolis={formData.uploadedPolis}
+            algemeneVragen={formData.algemeneVragen}
+            onAlgemeneVraagChange={handleAlgemeneVraagChange}
           />
         );
       case 3:
-        return (
-          <PersonalInfoForm
-            data={formData.personalInfo}
-            onChange={handlePersonalInfoChange}
-          />
-        );
-      case 4:
         return (
           <Summary
             formData={formData}
