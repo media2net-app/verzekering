@@ -24,7 +24,8 @@
 }
 
 .insurancesList,
-.personalInfo {
+.personalInfo,
+.polisSection {
   background: #f8f9fa;
   border-radius: 12px;
   padding: 1.5rem;
@@ -41,37 +42,57 @@
 }
 
 .insuranceItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 0;
-  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid #e0e0e0;
 }
 
 .insuranceItem:last-child {
   border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
-.insuranceDetails {
-  flex: 1;
+.insuranceHeader {
+  margin-bottom: 1rem;
 }
 
 .insuranceName {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 600;
   color: #333;
-  margin-bottom: 0.25rem;
 }
 
-.insuranceDescription {
-  font-size: 0.9rem;
+.insuranceAnswers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.answerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.answerLabel {
+  font-size: 0.95rem;
   color: #666;
+  font-weight: 500;
+  flex: 1;
 }
 
-.insurancePrice {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #667eea;
+.answerValue {
+  font-size: 0.95rem;
+  color: #333;
+  font-weight: 600;
+  text-align: right;
+  flex: 1;
 }
 
 .infoGrid {
@@ -84,6 +105,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
 }
 
 .infoLabel {
@@ -98,45 +123,53 @@
   font-weight: 600;
 }
 
-.total {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  border-radius: 12px;
-  padding: 2rem;
-  border: 2px solid #667eea;
+.polisSection {
+  margin-top: 1rem;
 }
 
-.totalRow {
+.polisInfo {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.polisFile {
+  display: flex;
   align-items: center;
-  margin-bottom: 1rem;
+  justify-content: space-between;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 2px solid #10b981;
 }
 
-.totalRow:last-child {
-  margin-bottom: 0;
-  padding-top: 1rem;
-  border-top: 2px solid #667eea;
-}
-
-.totalLabel {
-  font-size: 1.2rem;
+.polisFileName {
+  color: #10b981;
   font-weight: 600;
-  color: #333;
+  flex: 1;
 }
 
-.totalAmount {
-  font-size: 1.8rem;
-  font-weight: 700;
+.polisLink {
   color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border: 2px solid #667eea;
+  border-radius: 6px;
+  transition: all 0.3s ease;
 }
 
-.totalAmountYearly {
-  font-size: 2.2rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.polisLink:hover {
+  background: #667eea;
+  color: white;
+}
+
+.pdfViewer {
+  width: 100%;
+  height: 600px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
 }
 
 .actions {
@@ -153,6 +186,8 @@
   font-weight: 600;
   border-radius: 12px;
   transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
 }
 
 .buttonPrimary {
@@ -176,14 +211,13 @@
 }
 
 @media (max-width: 768px) {
-  .insuranceItem {
+  .answerRow {
     flex-direction: column;
-    align-items: flex-start;
     gap: 0.5rem;
   }
 
-  .insurancePrice {
-    align-self: flex-end;
+  .answerValue {
+    text-align: left;
   }
 
   .infoGrid {
@@ -198,5 +232,8 @@
   .buttonSecondary {
     width: 100%;
   }
-}
 
+  .pdfViewer {
+    height: 400px;
+  }
+}

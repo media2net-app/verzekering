@@ -1,6 +1,6 @@
 'use client';
 
-import { Car, Home, User, Check, ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { Car, Home, User, Check, ChevronDown, ChevronRight, Info, Plus } from 'lucide-react';
 
 interface IconProps {
   size?: number;
@@ -35,3 +35,6 @@ export function InfoIcon({ size = 24, className }: IconProps) {
   return <Info size={size} className={className} />;
 }
 
+export function PlusIcon({ size = 24, className }: IconProps) {
+  return <Plus size={size} className={className} />;
+}
